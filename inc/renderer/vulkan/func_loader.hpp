@@ -11,7 +11,7 @@ auto loadVulkanFunc(const char* funcName, VkInstance instance, Args... args) {
         return func(instance, args...);
     }
     else {
-        throw std::runtime_error("vulkan extension not present.");
+        throw std::runtime_error("Vulkan extension not present.");
     }
 }
 }

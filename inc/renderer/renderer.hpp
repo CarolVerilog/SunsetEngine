@@ -22,11 +22,5 @@ private:
     uint32_t    width  = 800u;
     uint32_t    height = 600u;
     GLFWwindow* window;
-
-#ifdef DEBUG
-    std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_validation"};
-    VkDebugUtilsMessengerEXT debugMessenger;
-#endif
-    VkInstance instance;
 };
 }
