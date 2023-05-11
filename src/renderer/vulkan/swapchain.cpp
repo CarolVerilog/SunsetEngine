@@ -115,7 +115,7 @@ auto createSwapchain(uint32 width, uint32 height) -> void
     createInfo.imageColorSpace  = surfaceFormat.colorSpace;
     createInfo.imageExtent      = extent;
     createInfo.imageArrayLayers = 1;
-    createInfo.imageUsage       = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    createInfo.imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
     QueueFamilyIndices indices              = findQueueFamilies(physicalDevice);
     uint32             queueFamilyIndices[] = {
@@ -146,14 +146,43 @@ auto createSwapchain(uint32 width, uint32 height) -> void
 
     vkGetSwapchainImagesKHR(device, swapchain, &imageCount, nullptr);
     swapchainImages.resize(imageCount);
-    vkGetSwapchainImagesKHR(device, swapchain, &imageCount, swapchainImages.data());
+    swapchainImageViews.resize(imageCount);
+    vkGetSwapchainImagesKHR(
+    device, swapchain, &imageCount, swapchainImages.data());
 
-    swapchainImageFormat=surfaceFormat.format;
-    swapchainExtent=extent;
+    swapchainImageFormat = surfaceFormat.format;
+    swapchainExtent      = extent;
+
+    for (size_t i = 0; i < swapchainImages.size(); i++) {
+        VkImageViewCreateInfo createInfo{};
+        createInfo.sType        = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        createInfo.image        = swapchainImages[i];
+        createInfo.viewType     = VK_IMAGE_VIEW_TYPE_2D;
+        createInfo.format       = swapchainImageFormat;
+        createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+        createInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        createInfo.subresourceRange.baseMipLevel   = 0;
+        createInfo.subresourceRange.levelCount     = 1;
+        createInfo.subresourceRange.baseArrayLayer = 0;
+        createInfo.subresourceRange.layerCount     = 1;
+
+        if (
+        vkCreateImageView(
+        device, &createInfo, nullptr, &swapchainImageViews[i]) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create image views!");
+        }
+    }
 }
 
 auto destroySwapchain() -> void
 {
+    for (auto imageView : swapchainImageViews) {
+        vkDestroyImageView(device, imageView, nullptr);
+    }
+
     vkDestroySwapchainKHR(device, swapchain, nullptr);
 }
 }

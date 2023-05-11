@@ -17,6 +17,7 @@ VkQueue          presentQueue;
 
 VkSwapchainKHR   swapchain;
 std::vector<VkImage> swapchainImages;
+std::vector<VkImageView> swapchainImageViews;
 VkFormat swapchainImageFormat;
 VkExtent2D swapchainExtent;
 }
