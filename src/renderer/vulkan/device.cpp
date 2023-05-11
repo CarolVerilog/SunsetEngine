@@ -1,6 +1,8 @@
 #include "renderer/vulkan/device.hpp"
 
 #include "renderer/vulkan/global.hpp"
+#include "renderer/vulkan/queue.hpp"
+#include "renderer/vulkan/swapchain.hpp"
 #include "utils/string.hpp"
 #include "utils/type.hpp"
 
@@ -12,51 +14,7 @@
 
 namespace sunset
 {
-
-struct QueueFamilyIndices
-{
-    bool isComplete()
-    {
-        return graphicsFamily.has_value() && presentFamily.has_value();
-    }
-
-    std::optional<uint32> graphicsFamily;
-    std::optional<uint32> presentFamily;
-};
-
-auto findQueueFamilies(VkPhysicalDevice device) -> QueueFamilyIndices
-{
-    QueueFamilyIndices indices;
-
-    uint32_t queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(
-    device, &queueFamilyCount, nullptr);
-
-    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(
-    device, &queueFamilyCount, queueFamilies.data());
-
-    int i = 0;
-    for (const auto& queueFamily : queueFamilies) {
-        if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-            indices.graphicsFamily = i;
-        }
-
-        VkBool32 presentSupport = false;
-        vkGetPhysicalDeviceSurfaceSupportKHR(
-        device, i, surface, &presentSupport);
-
-        if (presentSupport) {
-            indices.presentFamily = i;
-        }
-
-        i++;
-    }
-
-    return indices;
-}
-
-auto checkDeviceExtensionSupport(
+auto queryDeviceExtensionSupport(
 VkPhysicalDevice device, const std::vector<std::string>& extensionNames) -> bool
 {
     uint32 extensionCount;
@@ -77,7 +35,7 @@ VkPhysicalDevice device, const std::vector<std::string>& extensionNames) -> bool
     return requiredExtensionNames.empty();
 }
 
-auto checkDeviceLayerSupport(
+auto queryDeviceLayerSupport(
 VkPhysicalDevice device, const std::vector<std::string>& layerNames) -> bool
 {
     uint32 layerCount;
@@ -97,17 +55,26 @@ VkPhysicalDevice device, const std::vector<std::string>& layerNames) -> bool
     return requiredLayerNames.empty();
 }
 
+auto querySwapChainSupport(VkPhysicalDevice device) -> bool
+{
+    auto swapchainDetails = getSwapchainSupportDetails(device);
+    return !swapchainDetails.formats.empty() &&
+           !swapchainDetails.presentModes.empty();
+}
+
 auto isDeviceSuitable(
 VkPhysicalDevice device, const std::vector<std::string>& extensionNames,
 const std::vector<std::string>& layerNames) -> bool
 {
-    auto indices = findQueueFamilies(device);
+    auto indices  = findQueueFamilies(device);
+    bool suitable = true;
     return indices.isComplete() &&
-           checkDeviceExtensionSupport(device, extensionNames) &&
-           checkDeviceLayerSupport(device, layerNames);
+           queryDeviceExtensionSupport(device, extensionNames) &&
+           queryDeviceLayerSupport(device, layerNames) &&
+           querySwapChainSupport(device);
 }
 
-auto createPhysicalDevice(
+auto selectPhysicalDevice(
 const std::vector<std::string>& extensionNames,
 const std::vector<std::string>& layerNames) -> void
 {
@@ -124,7 +91,6 @@ const std::vector<std::string>& layerNames) -> void
     for (const auto& device : devices) {
         if (isDeviceSuitable(device, extensionNames, layerNames)) {
             physicalDevice = device;
-            break;
         }
     }
 
@@ -140,16 +106,15 @@ const std::vector<std::string>& layerNames) -> void
     QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-    std::vector<uint32>                  queueFamilyIndices = {
+    std::set<uint32>                     queueFamilyIndices = {
     indices.graphicsFamily.value(), indices.presentFamily.value()};
+    float queuePriority = 1.0f;
 
     for (auto queueFamilyIndex : queueFamilyIndices) {
-        VkDeviceQueueCreateInfo queueCreateInfo;
+        VkDeviceQueueCreateInfo queueCreateInfo{};
         queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();
+        queueCreateInfo.queueFamilyIndex = queueFamilyIndex;
         queueCreateInfo.queueCount       = 1;
-
-        float queuePriority              = 1.0f;
         queueCreateInfo.pQueuePriorities = &queuePriority;
 
         queueCreateInfos.push_back(queueCreateInfo);
@@ -167,7 +132,7 @@ const std::vector<std::string>& layerNames) -> void
     createInfo.ppEnabledLayerNames     = layerNamesC.data();
     createInfo.enabledLayerCount       = layerNames.size();
 
-    VkPhysicalDeviceFeatures features;
+    VkPhysicalDeviceFeatures features = {};
     vkGetPhysicalDeviceFeatures(physicalDevice, &features);
     createInfo.pEnabledFeatures = &features;
 
@@ -185,7 +150,7 @@ auto createDevice(
 const std::vector<std::string>& extensionNames,
 const std::vector<std::string>& layerNames) -> void
 {
-    createPhysicalDevice(extensionNames, layerNames);
+    selectPhysicalDevice(extensionNames, layerNames);
     createLogicalDevice(extensionNames, layerNames);
 }
 

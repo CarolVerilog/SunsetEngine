@@ -36,7 +36,8 @@ const std::vector<std::string>& extensionNames) -> void
     }
 
     if (!requiredExtensionNames.empty()) {
-        throw std::runtime_error("Vulkan required instance extensions not available.");
+        throw std::runtime_error(
+        "Vulkan required instance extensions not available.");
     }
 }
 
@@ -57,7 +58,8 @@ auto checkInstanceLayerSupport(const std::vector<std::string>& layerNames)
     }
 
     if (!requiredLayerNames.empty()) {
-        throw std::runtime_error("Vulkan required instance layers not available.");
+        throw std::runtime_error(
+        "Vulkan required instance layers not available.");
     }
 }
 
@@ -94,9 +96,12 @@ auto createDebugMessenger() -> void
     VkDebugUtilsMessengerCreateInfoEXT createInfo;
     populateDebugMessengerCreateInfo(&createInfo);
 
+    if (
     LOAD_VULKAN_FUNC(
     vkCreateDebugUtilsMessengerEXT, instance, &createInfo, nullptr,
-    &debugMessenger);
+    &debugMessenger) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create Vulkan debug messenger.");
+    }
 }
 #endif
 
@@ -131,7 +136,7 @@ const std::vector<std::string>& layerNames) -> void
     createInfo.pNext = &debugInfo;
 #else
     createInfo.enabledLayerCount = 0;
-    createInfo.pNext              = nullptr;
+    createInfo.pNext             = nullptr;
 #endif
 
     if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {

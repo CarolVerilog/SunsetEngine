@@ -3,6 +3,7 @@
 #include "renderer/vulkan/device.hpp"
 #include "renderer/vulkan/instance.hpp"
 #include "renderer/vulkan/surface.hpp"
+#include "renderer/vulkan/swapchain.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -56,7 +57,7 @@ auto Renderer::initVulkan() -> void
 #endif
 
     createInstance(instanceEnabledExtensions, instanceEnabledLayers);
-    
+
     createGLFWSurface(window);
 
     std::vector<std::string> deviceEnabledExtensions;
@@ -64,7 +65,16 @@ auto Renderer::initVulkan() -> void
 
     std::vector<std::string> deviceEnabledLayers;
 
+#ifdef DEBUG
+    deviceEnabledLayers.push_back("VK_LAYER_KHRONOS_validation");
+#endif
+
     createDevice(deviceEnabledExtensions, deviceEnabledLayers);
+
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+
+    createSwapchain(width, height);
 }
 
 auto Renderer::mainLoop() -> void
@@ -76,6 +86,7 @@ auto Renderer::mainLoop() -> void
 
 auto Renderer::cleanUp() -> void
 {
+    destroySwapchain();
     destroyDevice();
     destroySurface();
     destroyInstance();
