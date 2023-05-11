@@ -2,19 +2,46 @@
 
 #include "renderer/vulkan/func_loader.hpp"
 #include "renderer/vulkan/global.hpp"
+#include "utils/string.hpp"
 #include "utils/type.hpp"
 
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
 
-#include <cstring>
 #include <iostream>
+#include <set>
+#include <string>
+#include <string_view>
+#include <type_traits>
 #include <vector>
 
 namespace sunset
 {
 
-auto createValidationLayers() -> void
+auto checkInstanceExtensionSupport(
+const std::vector<std::string>& extensionNames) -> void
+{
+    uint32 extensionCount;
+    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+
+    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+    vkEnumerateInstanceExtensionProperties(
+    nullptr, &extensionCount, availableExtensions.data());
+
+    std::set<std::string> requiredExtensionNames(
+    extensionNames.begin(), extensionNames.end());
+
+    for (const auto& extension : availableExtensions) {
+        requiredExtensionNames.erase(extension.extensionName);
+    }
+
+    if (!requiredExtensionNames.empty()) {
+        throw std::runtime_error("Vulkan required instance extensions not available.");
+    }
+}
+
+auto checkInstanceLayerSupport(const std::vector<std::string>& layerNames)
+-> void
 {
     uint32 layerCount;
     vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -22,43 +49,23 @@ auto createValidationLayers() -> void
     std::vector<VkLayerProperties> availableLayers(layerCount);
     vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
-    for (const char* layerName : validationLayers) {
-        bool layerFound = false;
+    std::set<std::string> requiredLayerNames(
+    layerNames.begin(), layerNames.end());
 
-        for (const auto& layerProperties : availableLayers) {
-            if (strcmp(layerName, layerProperties.layerName) == 0) {
-                layerFound = true;
-                break;
-            }
-        }
+    for (const auto& availableLayer : availableLayers) {
+        requiredLayerNames.erase(availableLayer.layerName);
+    }
 
-        if (!layerFound) {
-            throw std::runtime_error("Vulkan validation layers not available.");
-        }
+    if (!requiredLayerNames.empty()) {
+        throw std::runtime_error("Vulkan required instance layers not available.");
     }
 }
 
-auto getExtensions() -> std::vector<const char*>
-{
-    uint32_t     glfwExtensionCount = 0;
-    const char** glfwExtensions;
-
-    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-    std::vector<const char*> extensions(
-        glfwExtensions, glfwExtensions + glfwExtensionCount);
-#ifdef DEBUG
-    extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-#endif
-
-    return extensions;
-}
-
 VKAPI_ATTR auto VKAPI_CALL debugCallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
-    VkDebugUtilsMessageTypeFlagsEXT             messageType,
-    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
-    -> VkBool32
+VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
+VkDebugUtilsMessageTypeFlagsEXT             messageType,
+const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
+-> VkBool32
 {
     std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
 
@@ -66,14 +73,14 @@ VKAPI_ATTR auto VKAPI_CALL debugCallback(
 }
 
 auto populateDebugMessengerCreateInfo(
-    VkDebugUtilsMessengerCreateInfoEXT* createInfo) -> void
+VkDebugUtilsMessengerCreateInfoEXT* createInfo) -> void
 {
     *createInfo       = {};
     createInfo->sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
     createInfo->messageSeverity =
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+    VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+    VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
     createInfo->messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
                               VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
                               VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
@@ -81,21 +88,26 @@ auto populateDebugMessengerCreateInfo(
     createInfo->pUserData       = nullptr;
 }
 
+#ifdef DEBUG
 auto createDebugMessenger() -> void
 {
     VkDebugUtilsMessengerCreateInfoEXT createInfo;
     populateDebugMessengerCreateInfo(&createInfo);
 
     LOAD_VULKAN_FUNC(
-        vkCreateDebugUtilsMessengerEXT, instance, &createInfo, nullptr,
-        &debugMessenger);
+    vkCreateDebugUtilsMessengerEXT, instance, &createInfo, nullptr,
+    &debugMessenger);
 }
-
-auto createInstance() -> void
-{
-#ifdef DEBUG
-    createValidationLayers();
 #endif
+
+auto createInstance(
+const std::vector<std::string>& extensionNames,
+const std::vector<std::string>& layerNames) -> void
+{
+    checkInstanceExtensionSupport(extensionNames);
+    checkInstanceLayerSupport(layerNames);
+    auto extensionNamesC = toCStringArray(extensionNames);
+    auto layerNamesC     = toCStringArray(layerNames);
 
     VkApplicationInfo appInfo{};
     appInfo.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -106,23 +118,20 @@ auto createInstance() -> void
     appInfo.apiVersion         = VK_API_VERSION_1_0;
 
     VkInstanceCreateInfo createInfo{};
-    createInfo.sType            = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    createInfo.pApplicationInfo = &appInfo;
-
-    auto extensions                    = getExtensions();
-    createInfo.enabledExtensionCount   = extensions.size();
-    createInfo.ppEnabledExtensionNames = extensions.data();
+    createInfo.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    createInfo.pApplicationInfo        = &appInfo;
+    createInfo.ppEnabledExtensionNames = extensionNamesC.data();
+    createInfo.enabledExtensionCount   = extensionNames.size();
+    createInfo.ppEnabledLayerNames     = layerNamesC.data();
+    createInfo.enabledLayerCount       = layerNames.size();
 
 #ifdef DEBUG
-    createInfo.enabledLayerCount   = validationLayers.size();
-    createInfo.ppEnabledLayerNames = validationLayers.data();
-
     VkDebugUtilsMessengerCreateInfoEXT debugInfo;
     populateDebugMessengerCreateInfo(&debugInfo);
     createInfo.pNext = &debugInfo;
 #else
     createInfo.enabledLayerCount = 0;
-    creatInfo.pNext              = nullptr;
+    createInfo.pNext              = nullptr;
 #endif
 
     if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
@@ -138,7 +147,7 @@ auto destroyInstance() -> void
 {
 #ifdef DEBUG
     LOAD_VULKAN_FUNC(
-        vkDestroyDebugUtilsMessengerEXT, instance, debugMessenger, nullptr);
+    vkDestroyDebugUtilsMessengerEXT, instance, debugMessenger, nullptr);
 #endif
     vkDestroyInstance(instance, nullptr);
 }

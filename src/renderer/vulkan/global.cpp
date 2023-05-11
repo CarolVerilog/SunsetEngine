@@ -1,11 +1,15 @@
 #include "renderer/vulkan/global.hpp"
 
+namespace sunset
+{
 #ifdef DEBUG
-std::vector<const char*> validationLayers;
 VkDebugUtilsMessengerEXT debugMessenger;
 #endif
 
-VkInstance         instance;
-VkPhysicalDevice   physicalDevice;
-VkDevice           device;
-VkQueue            graphicsQueue;
+VkInstance       instance;
+VkSurfaceKHR     surface;
+VkPhysicalDevice physicalDevice;
+VkDevice         device;
+VkQueue          graphicsQueue;
+VkQueue          presentQueue;
+}

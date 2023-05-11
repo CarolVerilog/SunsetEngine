@@ -1,16 +1,10 @@
 #include "renderer/renderer.hpp"
 
 #include "renderer/vulkan/device.hpp"
-#include "renderer/vulkan/func_loader.hpp"
-#include "renderer/vulkan/global.hpp"
 #include "renderer/vulkan/instance.hpp"
+#include "renderer/vulkan/surface.hpp"
 
 #include <GLFW/glfw3.h>
-#include <vulkan/vulkan_core.h>
-
-#include <cstring>
-#include <iostream>
-#include <stdexcept>
 
 namespace sunset
 {
@@ -30,10 +24,47 @@ auto Renderer::initWindow() -> void
     window = glfwCreateWindow(width, height, "Sunset Engine", nullptr, nullptr);
 }
 
+auto getGLFWRequiredInstanceExtensions() -> std::vector<std::string>
+{
+    uint32_t     glfwExtensionCount = 0;
+    const char** glfwExtensions;
+
+    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+    std::vector<std::string> extensions(
+    glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+    return extensions;
+}
+
 auto Renderer::initVulkan() -> void
 {
-    createInstance();
-    createDevice();
+    std::vector<std::string> instanceEnabledExtensions;
+    auto glfwRequiredInstanceExtensions = getGLFWRequiredInstanceExtensions();
+    instanceEnabledExtensions.insert(
+    instanceEnabledExtensions.end(), glfwRequiredInstanceExtensions.begin(),
+    glfwRequiredInstanceExtensions.end());
+
+#ifdef DEBUG
+    instanceEnabledExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+#endif
+
+    std::vector<std::string> instanceEnabledLayers;
+
+#ifdef DEBUG
+    instanceEnabledLayers.push_back("VK_LAYER_KHRONOS_validation");
+#endif
+
+    createInstance(instanceEnabledExtensions, instanceEnabledLayers);
+    
+    createGLFWSurface(window);
+
+    std::vector<std::string> deviceEnabledExtensions;
+    deviceEnabledExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
+    std::vector<std::string> deviceEnabledLayers;
+
+    createDevice(deviceEnabledExtensions, deviceEnabledLayers);
 }
 
 auto Renderer::mainLoop() -> void
@@ -46,6 +77,7 @@ auto Renderer::mainLoop() -> void
 auto Renderer::cleanUp() -> void
 {
     destroyDevice();
+    destroySurface();
     destroyInstance();
     glfwDestroyWindow(window);
     glfwTerminate();

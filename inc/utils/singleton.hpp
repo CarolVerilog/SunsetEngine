@@ -1,11 +1,11 @@
 namespace sunset
 {
-template <class T>
+template <class String>
 struct Singleton
 {
-    static T& get()
+    static String& get()
     {
-        static T instance;
+        static String instance;
         return instance;
     }
 
