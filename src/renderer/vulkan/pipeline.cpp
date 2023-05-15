@@ -1,7 +1,6 @@
-#include "renderer/vulkan/graphics_pipeline.hpp"
+#include "renderer/vulkan/pipeline.hpp"
 
 #include "renderer/vulkan/global.hpp"
-#include "renderer/vulkan/pipeline_layout.hpp"
 #include "renderer/vulkan/render_pass.hpp"
 #include "renderer/vulkan/shader.hpp"
 
@@ -19,7 +18,19 @@ auto createGraphicsPipeline() -> void
     auto fragmentShaderModule =
     createShaderModule("shader/spirv/basic.frag.spv");
     createRenderPass();
-    createPipelineLayout();
+
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount         = 0;
+    pipelineLayoutInfo.pSetLayouts            = nullptr;
+    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    pipelineLayoutInfo.pPushConstantRanges    = nullptr;
+
+    if (
+    vkCreatePipelineLayout(
+    device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create pipeline layout!");
+    }
 
     VkPipelineShaderStageCreateInfo vertexShaderStageInfo{};
     vertexShaderStageInfo.sType =
@@ -61,7 +72,6 @@ auto createGraphicsPipeline() -> void
     inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
 
-    VkViewport viewport{};
     viewport.x        = 0.0f;
     viewport.y        = 0.0f;
     viewport.width    = (float)swapchainExtent.width;
@@ -69,7 +79,6 @@ auto createGraphicsPipeline() -> void
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
-    VkRect2D scissor{};
     scissor.offset = {0, 0};
     scissor.extent = swapchainExtent;
 
@@ -156,12 +165,38 @@ auto createGraphicsPipeline() -> void
 
     vkDestroyShaderModule(device, vertexShaderModule, nullptr);
     vkDestroyShaderModule(device, fragmentShaderModule, nullptr);
+
+    swapchainFramebuffers.resize(swapchainImages.size());
+
+    for (size_t i = 0; i < swapchainImageViews.size(); i++) {
+        VkImageView attachments[] = {swapchainImageViews[i]};
+
+        VkFramebufferCreateInfo framebufferInfo{};
+        framebufferInfo.sType      = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebufferInfo.renderPass = renderPass;
+        framebufferInfo.attachmentCount = 1;
+        framebufferInfo.pAttachments    = attachments;
+        framebufferInfo.width           = swapchainExtent.width;
+        framebufferInfo.height          = swapchainExtent.height;
+        framebufferInfo.layers          = 1;
+
+        if (
+        vkCreateFramebuffer(
+        device, &framebufferInfo, nullptr, &swapchainFramebuffers[i]) !=
+        VK_SUCCESS) {
+            throw std::runtime_error("failed to create framebuffer!");
+        }
+    }
 }
 
 auto destroyGraphicsPipeline() -> void
 {
+    for (auto framebuffer : swapchainFramebuffers) {
+        vkDestroyFramebuffer(device, framebuffer, nullptr);
+    }
+
     vkDestroyPipeline(device, graphicsPipeline, nullptr);
-    destroyPipelineLayout();
+    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     destroyRenderPass();
 }
 }

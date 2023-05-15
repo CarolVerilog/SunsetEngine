@@ -1,6 +1,6 @@
 #include "renderer/vulkan/instance.hpp"
 
-#include "renderer/vulkan/func_loader.hpp"
+#include "renderer/vulkan/function.hpp"
 #include "renderer/vulkan/global.hpp"
 #include "utils/string.hpp"
 #include "utils/type.hpp"

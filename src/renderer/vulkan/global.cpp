@@ -18,10 +18,18 @@ VkQueue          presentQueue;
 VkSwapchainKHR   swapchain;
 std::vector<VkImage> swapchainImages;
 std::vector<VkImageView> swapchainImageViews;
+std::vector<VkFramebuffer> swapchainFramebuffers;
 VkFormat swapchainImageFormat;
 VkExtent2D swapchainExtent;
+
+VkViewport viewport;
+VkRect2D scissor;
 
 VkPipelineLayout pipelineLayout;
 VkRenderPass renderPass;
 VkPipeline graphicsPipeline;
+
+VkCommandPool commandPool;
+VkCommandBuffer commandBuffer;
+
 }

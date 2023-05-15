@@ -179,6 +179,7 @@ auto createSwapchain(uint32 width, uint32 height) -> void
 
 auto destroySwapchain() -> void
 {
+
     for (auto imageView : swapchainImageViews) {
         vkDestroyImageView(device, imageView, nullptr);
     }
