@@ -1,7 +1,9 @@
 #include "renderer/renderer.hpp"
 
 #include "renderer/vulkan/device.hpp"
+#include "renderer/vulkan/graphics_pipeline.hpp"
 #include "renderer/vulkan/instance.hpp"
+#include "renderer/vulkan/render_pass.hpp"
 #include "renderer/vulkan/surface.hpp"
 #include "renderer/vulkan/swapchain.hpp"
 
@@ -40,41 +42,36 @@ auto getGLFWRequiredInstanceExtensions() -> std::vector<std::string>
 
 auto Renderer::initVulkan() -> void
 {
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+
     std::vector<std::string> instanceEnabledExtensions;
     auto glfwRequiredInstanceExtensions = getGLFWRequiredInstanceExtensions();
     instanceEnabledExtensions.insert(
     instanceEnabledExtensions.end(), glfwRequiredInstanceExtensions.begin(),
     glfwRequiredInstanceExtensions.end());
-
 #ifdef DEBUG
     instanceEnabledExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif
 
     std::vector<std::string> instanceEnabledLayers;
-
 #ifdef DEBUG
     instanceEnabledLayers.push_back("VK_LAYER_KHRONOS_validation");
 #endif
-
-    createInstance(instanceEnabledExtensions, instanceEnabledLayers);
-
-    createGLFWSurface(window);
 
     std::vector<std::string> deviceEnabledExtensions;
     deviceEnabledExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
     std::vector<std::string> deviceEnabledLayers;
-
 #ifdef DEBUG
     deviceEnabledLayers.push_back("VK_LAYER_KHRONOS_validation");
 #endif
 
+    createInstance(instanceEnabledExtensions, instanceEnabledLayers);
+    createGLFWSurface(window);
     createDevice(deviceEnabledExtensions, deviceEnabledLayers);
-
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-
     createSwapchain(width, height);
+    createGraphicsPipeline();
 }
 
 auto Renderer::mainLoop() -> void
@@ -86,6 +83,7 @@ auto Renderer::mainLoop() -> void
 
 auto Renderer::cleanUp() -> void
 {
+    destroyGraphicsPipeline();
     destroySwapchain();
     destroyDevice();
     destroySurface();

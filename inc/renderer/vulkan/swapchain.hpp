@@ -1,3 +1,5 @@
+#pragma once
+
 #include "utils/type.hpp"
 
 #include <vulkan/vulkan.h>

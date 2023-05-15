@@ -1,3 +1,5 @@
+#pragma once
+
 namespace sunset
 {
 template <class String>

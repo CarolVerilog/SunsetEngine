@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vulkan/vulkan.h>
 
 #include <vector>
@@ -22,4 +24,8 @@ extern std::vector<VkImage> swapchainImages;
 extern std::vector<VkImageView> swapchainImageViews;
 extern VkFormat swapchainImageFormat;
 extern VkExtent2D swapchainExtent;
+
+extern VkPipelineLayout pipelineLayout;
+extern VkRenderPass renderPass;
+extern VkPipeline graphicsPipeline;
 }

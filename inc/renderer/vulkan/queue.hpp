@@ -1,3 +1,5 @@
+#pragma once
+
 #include "utils/type.hpp"
 
 #include <vulkan/vulkan.h>
@@ -8,10 +10,7 @@ namespace sunset
 {
 struct QueueFamilyIndices
 {
-    bool isComplete()
-    {
-        return graphicsFamily.has_value() && presentFamily.has_value();
-    }
+    auto isComplete() -> bool;
 
     std::optional<uint32> graphicsFamily;
     std::optional<uint32> presentFamily;

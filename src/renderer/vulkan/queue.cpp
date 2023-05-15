@@ -3,6 +3,11 @@
 #include "renderer/vulkan/global.hpp"
 
 namespace sunset{
+auto QueueFamilyIndices::isComplete()->bool
+{
+    return graphicsFamily.has_value() && presentFamily.has_value();
+}
+
 auto findQueueFamilies(VkPhysicalDevice device) -> QueueFamilyIndices
 {
     QueueFamilyIndices indices;

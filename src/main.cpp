@@ -8,7 +8,7 @@ int main()
     try {
         sunset::Renderer::get().run();
     }
-    catch (std::exception e) {
+    catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
     }
 

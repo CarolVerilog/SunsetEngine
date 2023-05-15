@@ -1,3 +1,5 @@
+#pragma once
+
 #include "utils/singleton.hpp"
 
 #include <GLFW/glfw3.h>
